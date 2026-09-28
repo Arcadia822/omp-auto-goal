@@ -24,16 +24,20 @@ markdown 命令无法开启 goal 模式：
 
 ## 安装
 
-把仓库克隆到任意目录 `<plugin-dir>`（示例：`~/Documents/omp-auto-goal`）。
+把仓库克隆到任意目录 `<plugin-dir>`（示例：`~/Documents/omp-auto-goal`），然后二选一：
 
-在 `~/.omp/agent/config.yml` 注册：
+```bash
+# 推荐：注册为本地已安装插件（会出现在 omp plugin list / plugin doctor）
+omp plugin link <plugin-dir>
+```
 
 ```yaml
+# 或直接在 ~/.omp/agent/config.yml 里挂载
 extensions:
   - <plugin-dir>
 ```
 
-或用 `omp plugin link <plugin-dir>`。重启会话后生效（扩展在启动时加载）。
+两种方式都重启会话后生效（扩展在启动时加载）；同一条路径同时出现时按绝对路径去重，只加载一次。
 
 `node_modules/@oh-my-pi/pi-coding-agent` 是指向全局 omp 安装的符号链接（只为 `tsc` / 编辑器解析类型）：
 
