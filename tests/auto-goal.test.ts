@@ -125,6 +125,14 @@ describe("contract", () => {
 		expect(text).toContain("只在用户明确给出 token 预算时");
 	});
 
+	test("规则声明自主授权，且不含已退役的 guided-goal 流程", () => {
+		const text = buildContract({ armed: true });
+		expect(text).toContain("自主决定");
+		expect(text).toContain("complete / drop");
+		expect(text).toContain("由命令自身的指示定义");
+		expect(text).not.toContain("guided-goal");
+	});
+
 	test("访谈走一次 ask 批量问，且无头环境不猜不建 goal", () => {
 		const text = buildContract({ armed: true });
 		expect(text).toContain("一次 `ask` 批量问");

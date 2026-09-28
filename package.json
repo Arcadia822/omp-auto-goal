@@ -1,7 +1,7 @@
 {
   "name": "omp-auto-goal",
-  "version": "1.0.0",
-  "description": "OMP 插件：命令带 `omp-auto-goal: on` 标记即自动挂载 goal 工具并注入创建协议（先调研、可跳过访谈、一次 ask 批量问、goal 退出时还原工具集）",
+  "version": "1.1.0",
+  "description": "OMP 插件：斜杠命令带 `omp-auto-goal: on` 标记即把 goal 工具交给 agent，由其按命令指示自主开启/管理 goal 模式并设定 goal 内容；goal 退出时还原工具集",
   "license": "MIT",
   "main": "index.ts",
   "scripts": {

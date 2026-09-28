@@ -1,22 +1,24 @@
 /**
- * omp-auto-goal — 让带 `omp-auto-goal: on` 标记行（可写成引用行 `> omp-auto-goal: on`）的斜杠命令自动接入 OMP goal 模式。
+ * omp-auto-goal — 斜杠命令侧写一行标记（`omp-auto-goal: on`），把 `goal` 工具交给 agent，
+ * 由 agent 自主决定是否开启 / 何时收尾 goal 模式，以及 goal 内容写什么。
  *
- * 为什么必须由扩展来做：markdown 命令无法开启 goal 模式。`goal` 工具只在
+ * 为什么必须由扩展做：markdown 命令无法开启 goal 模式。`goal` 工具只在
  * `getGoalModeState()?.enabled === true` 时才进入默认工具集（`rebuildToolSet`），
- * agent 也没有改动自身工具集的能力；能挂载它的只有 TUI 内置 `/goal`、`/guided-goal`
+ * agent 也没有改动自身工具集的能力；能挂载它的只有 TUI 内置 `/goal`（用户决定 objective）
  * 以及调用 `pi.setActiveTools()` 的扩展。文件命令只是 prompt 文本展开。
  *
  * 机制：
  * 1. 命令 markdown 里写一行标记，命令展开后标记出现在用户消息里。
  * 2. 本扩展在 `before_agent_start` 命中标记时，把 `goal` 工具挂进活动工具集，
- *    并注入 guided-goal 的访谈协议（每回合只问一个问题 → 五段齐全 → `goal` op:create）。
- * 3. goal 离开 active（完成/丢弃/暂停）时摘掉 `goal` 工具，与内置 /goal 的退出路径一致。
+ *    并注入一段授权规则：agent 自主管理 goal 模式（get / create / resume / complete / drop），
+ *    objective 按平台要求的结构书写，内容与问不问用户都由命令自身的指示决定。
+ * 3. goal 离开 active（完成/丢弃/暂停）时摘掉 `goal` 工具，还原原工具集。
  *
  * 标记必须是一行纯文本，不能用 `<!-- -->`：宿主在 prompt 渲染阶段会剥掉 HTML 注释
  * （`text.replace(/<!--[\s\S]*?-->/g, "")`），注释标记到不了这里。
  *
  * `before_agent_start` 的 prompt 只包含选中的用户消息，隐藏的 agent 归属消息被排除，
- * 所以本扩展注入的协议不会自我触发；goal 模式的继续（continuation）也不含标记。
+ * 所以本扩展注入的规则不会自我触发；goal 模式的继续（continuation）也不含标记。
  */
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 
@@ -41,15 +43,15 @@ export function buildContract({ armed, reason }: ContractInput): string {
   const status = armed ? "已由 omp-auto-goal 挂载" : `未挂载：${reason ?? "原因未知"}`;
 
   return [
-    "# omp-auto-goal：goal 模式接入",
+    "# omp-auto-goal：已授权你自主管理 goal 模式",
     "",
-    "本回合的斜杠命令带 `omp-auto-goal` 标记，插件已处理 goal 模式接入。",
-    "本协议只管 goal 模式接入与 goal 的创建规则（goal 状态、调研/访谈/创建、五段的格式）；**objective 各段落的具体内容、任务流程、交付格式、提问策略都由命令自身定义**，不要用本协议替代命令指示。",
+    "本回合的斜杠命令带 `omp-auto-goal` 标记，插件已把 `goal` 工具挂给本会话：**是否开启 goal 模式、何时 complete / drop，以及 objective 写什么，都由你按本命令的指示自主决定。**",
+    "本规则只管 goal 模式本身（工具可用性、状态核对、objective 的结构与创建条件）；**任务流程、交付格式、向用户问什么由命令自身的指示定义**，不要用本规则替代命令指示。",
     "",
-    "## 接入状态",
+    "## 状态",
     `- \`goal\` 工具：${status}`,
     "",
-    "## 接入协议",
+    "## 规则",
     '1. 先看 goal 状态：调用 `goal`（`op: "get"`）。',
     "   - 已有 active goal 且 objective 就是本次任务：不要重复创建，直接执行命令指示。",
     "   - 已有 active goal 但属于别的任务：停下，向用户说明并给出「复用」或「`/goal drop` 后重建」两个选项。",
@@ -79,7 +81,7 @@ export function buildContract({ armed, reason }: ContractInput): string {
     "   - `Verification` 必须写 agent 自查用的确切命令或动作。",
     "   - `Boundaries` 必须写允许改动的范围，以及明确不碰的清单。",
     "   - `Stop conditions` 必须包含：需要人类决策或承担风险时停下请示、达到尝试上限或 token 预算时停下上报。",
-    "6. 创建成功后：一句话确认，然后严格按本回合的斜杠命令工作；不要把「创建 goal」本身当成任务目标。",
+    "6. 收尾与管理：只在 objective 的验收项逐条核对通过后才 `complete`；被阻塞或需要人类决策时先停下请示，不要为了结束而 complete。之后严格按本回合的斜杠命令工作；不要把「创建 goal」本身当成任务目标。",
     armed
       ? ""
       : "7. `goal` 工具未挂载时不要模仿或绕过 goal 模式：向用户说明具体原因（设置 `goal.enabled=false`，或当前处于 plan 模式（含 paused）/ vibe 模式），等待用户处理。仅当用户明确要求不用 goal 模式时，才按原命令流程执行并在交付中注明。",
